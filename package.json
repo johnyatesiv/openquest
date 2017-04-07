@@ -1,0 +1,22 @@
+{
+  "name": "openquest",
+  "version": "0.0.1",
+  "description": "Geolocation based open quest game",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/acceptance"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnyatesiv/openquest.git"
+  },
+  "author": "John Yates",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/johnyatesiv/openquest/issues"
+  },
+  "homepage": "https://github.com/johnyatesiv/openquest#readme",
+  "dependencies": {
+    "express": "^4.15.2"
+  }
+}
