@@ -1,0 +1,283 @@
+<html>
+    <head>
+        <title>Main Page</title>
+        <style>
+            .frameBorder {
+                border: solid 1px black;
+                text-align: center;
+            }
+            .clickable {
+                cursor: pointer;
+            }
+            .direction {
+                border: 1px solid white;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script src="https://cdn.socket.io/socket.io-1.0.0.js"></script>
+        <script>
+            var currentCoords = {lat: null, lon: null};
+
+            $(document).ready(function() {
+                var socket = io('http://localhost:3000/');
+                socket.on('connect', function () {
+                    socket.on('response', function(message) {
+                        console.log(message);
+                    });
+
+                    socket.on("Character.Loaded", function(Character) {
+                        console.log(Character);
+                        loadCharacter(Character);
+                    });
+                });
+
+                $("#newGame").on("click", function(e) {
+                    $("#newCharacterModal").modal("show");
+                    $("#loadCharacterModal").modal("hide");
+                    //socket.send("event", {name: "Character.Create", content: {Name: "Test", Sex: "M", Race: "Orc", Class: "Warrior"}});
+                });
+
+                $("#loadGame").on("click", function(e) {
+                    $("#loadCharacterModal").modal("show");
+                    $("#newCharacterModal").modal("hide");
+                    //socket.send("event", {name: "Character.Create", content: {Name: "Test", Sex: "M", Race: "Orc", Class: "Warrior"}});
+                });
+
+//                $("#newCharacterSubmit").on("click", function(e) {
+//                    $("#newCharacterForm").submit();
+//                });
+//
+//                $("#loadCharacterSubmit").on("click", function(e) {
+//                    $("#loadCharacterForm").submit();
+//                });
+
+//                $("#loadCharacterForm").on("submit", function(e) {
+//                    e.preventDefault();
+//
+//                    var values = {};
+//                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
+//                        values[field.name] = field.value;
+//                    });
+//
+//                    socket.emit("Character.Load", values);
+//                });
+
+//                $("#newCharacterForm").on("submit", function() {
+//                    var values = {};
+//                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
+//                        values[field.name] = field.value;
+//                    });
+//
+//                    socket.emit("Character.Create", values);
+//                });
+
+                $(".control").on("click", function(e) {
+                    alert(this.id);
+                });
+            });
+
+            populateClassesList();
+            populateRacesList();
+
+            function populateClassesList() {
+                $.ajax({
+                    url: "http://localhost:8000/classes"
+                }).done(function(data) {
+                    if(data.ok) {
+                        arrayToSelect("#class", data.body);
+                    } else {
+                        alert("Error loading Class list.");
+                    }
+                });
+            }
+
+            function populateRacesList() {
+                $.ajax({
+                    url: "http://localhost:8000/races"
+                }).done(function(data) {
+                    if(data.ok) {
+                        arrayToSelect("#race", data.body);
+                    } else {
+                        alert("Error loading Race list.");
+                    }
+                });
+            }
+
+            function arrayToSelect(selectId, options) {
+                for(var i in options) {
+                    $(selectId).append("<option value='"+options[i]+"'>"+options[i]+"</option>");
+                }
+            }
+
+            function loadCharacter(Character) {
+                for(var a in Character) {
+                    $("#character"+a).text(Character[a]);
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div class="nav">
+            <ul id="mainMenu" class="nav nav-pills">
+                <li role="presentation"><a id="newGame" class="btn btn-default">New Character</a></li>
+                <li role="presentation"><a id="loadGame" class="btn btn-default">Load Character</a></li>
+                <li><a id="characterLatBtn" class="btn btn-default">Latitiude: <span id="characterLat"></span></a></li>
+                <li><a id="characterLonBtn" class="btn btn-default">Longitude: <span id="characterLon"></span></a></li>
+            </ul>
+        </div>
+        <br>
+        <div class="col-lg-4 frameBorder">
+            <svg id="characterPanel" width="300" height="300">
+                <circle cx="150" cy="150" r="100"></circle>
+            </svg>
+            <ul class="nav nav-tabs">
+                <li class="active"><a class="btn btn-default" data-toggle="tab" href="#statTab">Inventory</a></li>
+                <li><a class="btn btn-default" data-toggle="tab" href="#magicTab">Magic</a></li>
+                <li><a class="btn btn-default" data-toggle="tab" href="#inventoryTab">Inventory</a></li>
+            </ul>
+            <div class="tab-content">
+                <div id="statTab" class="tab-pane fade in active">
+                    <table id="statsTable" class="table table-striped">
+                        <tr>
+                            <td id="characterName"></td>
+                            <td id="characterClass"></td>
+                        </tr><tr>
+                        <td>Level</td><td id="characterLevel"></td>
+                        <td>Experience</td><td id="characterExperience"></td>
+                    </tr><tr>
+                    </tr><tr>
+                        <td>Sex</td><td id="characterSex"></td>
+                        <td>Race</td><td id="characterRace"></td>
+                    </tr><tr>
+                        <td>Strength</td><td id="characterStrength"></td>
+                        <td>Dexterity</td><td id="characterDexterity"></td>
+                    </tr><tr>
+                        <td>Constitution</td><td id="characterConstitution"></td>
+                        <td>Intelligence</td><td id="characterIntelligence"></td>
+                    </tr><tr>
+                        <td>Magic</td><td id="characterMagic"></td>
+                        <td>Spirit</td><td id="characterSpirit"></td>
+                    </tr>
+                    </table>
+                </div>
+                <div id="magicTab" class="tab-pane fade">
+                    <table id="magicTable" class="table table-striped">
+                        <tr>
+                            <td>Fire</td><td id="characterFire"></td>
+                            <td>Ice</td><td id="characterIce"></td>
+                        </tr>
+                        <tr>
+                            <td>Thunder</td><td id="characterThunder"></td>
+                            <td>Earth</td><td id="characterEarth"></td>
+                        </tr>
+                        <tr>
+                            <td>Water</td><td id="characterWater"></td>
+                            <td>Wood</td><td id="characterWood"></td>
+                        </tr>
+                        <tr>
+                            <td>Toxin</td><td id="characterToxin"></td>
+                            <td>Holy</td><td id="characterHoly"></td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="inventoryTab" class="tab-pane fade">
+                    <table id="inventoryTable"></table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 frameBorder">
+            <svg id="environmentPanel" width="600" height="600">
+                <rect id="northWest" x="0" y="0" width="200" height="200" class="direction clickable">NW</rect>
+                <rect id="north" x="200" y="0" width="200" height="200" class="direction clickable">N</rect>
+                <rect id="northEast" x="400" y="0" width="200" height="200" class="direction clickable">NE</rect>
+                <rect id="west" x="0" y="200" width="200" height="200" class="direction clickable">W</rect>
+                <rect id="charSquare" x="200" y="200" width="200" height="200" class="direction clickable"></rect>
+                <rect id="east" x="400" y="200" width="200" height="200" class="direction clickable">E</rect>
+                <rect id="southWest" x="0" y="400" width="200" height="200" class="direction clickable">SW</rect>
+                <rect id="south" x="200" y="400" width="200" height="200" class="direction clickable">S</rect>
+                <rect id="southEast" x="400" y="400" width="200" height="200" class="direction clickable">SE</rect>
+            </svg>
+        </div>
+        <div class="col-lg-2 frameBorder">
+            <svg height="400" width="400">
+                <polygon id="up" points="120,100 90,150 150,150" fill="black" class="control clickable"></polygon>
+                <polygon id="left" points="40,200 80,240 80,160" fill="black" class="control clickable"></polygon>
+                <polygon id="right" points="200,200 160,240 160,160" fill="black" class="control clickable"></polygon>
+                <polygon id="down" points="120,300 90,250 150,250" fill="black" class="control clickable"></polygon>
+            </svg>
+        </div>
+        <div id="newCharacterModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">New Game</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>New Character</p>
+                        <form id="newCharacterForm" action="/character" method="POST">
+                            <div class="form-group">
+                                <label for="name">Name</label>
+                                <input id="name" class="form-control" type="text" name="name">
+                            </div>
+                            <div class="form-group">
+                                <label for="sex">Sex</label>
+                                <select id="sex" class="form-control" name="sex">
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="class">Class</label>
+                                <select id="class" class="form-control" name="class"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="race">Race</label>
+                                <select id="race" class="form-control" name="race"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input id="password" class="form-control" type="password" name="password">
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-default">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button id="newCharacterSubmit" type="button" class="btn btn-primary">Create</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+        <div id="loadCharacterModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">New Game</h4>
+                    </div>
+                    <div class="modal-body">
+                        <form id="loadCharacterForm">
+                            <div class="form-group">
+                                <label for="loadName">Name</label>
+                                <input id="loadName" class="form-control" type="text" name="name">
+                            </div>
+                            <div class="form-group">
+                                <label for="loadPassword">Password</label>
+                                <input id="loadPassword" class="form-control" type="password" name="password">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button id="loadCharacterSubmit" type="button" class="btn btn-primary">Login</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+    </body>
+</html>
