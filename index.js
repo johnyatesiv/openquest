@@ -8,6 +8,7 @@ var crypto = require("crypto");
 var app = express();
 var db = mongojs("openquest", ["characters"]);
 var libPath = "./lib/";
+var serverCharacters = {};
 
 /** Game Deps **/
 var Events = require(libPath+"Events.js");
@@ -26,6 +27,9 @@ app.engine('.html', require('ejs').__express);
 app.set('views', __dirname + '/public/views'); //Set views path to that same html folder
 app.set('view engine', 'html'); //Instead of .ejs, look for .html extension
 
+app.use('/fonts', express.static('./public/fonts'));
+app.use('/css', express.static('./public/css'));
+app.use('/js', express.static('./public/js'));
 
 app.listen(8000, function () {
     console.log('App listening on port 8000');
@@ -81,30 +85,58 @@ io.on('connection', function(client){
 
     client.on('Character.Create', function(character) {
         character.socketId = client.id;
+        character.password = hashPassword(character.password);
         console.log(character);
         var newCharacter = new Character(character.name, character.sex, new Races[character.race](), new Classes[character.class]());
         console.log(newCharacter);
 
-        db.insert(character, function(err, docs) {
-            console.log(docs);
+        db.characters.insert(character, function(err, docs) {
+            serverCharacters[docs[0].id] = docs[0];
+            client.emit("Character.Loaded", newCharacter.data);
         });
     });
 
     client.on("Character.Load", function(data) {
-        console.log("Load req");
-
-        client.emit("Character.Loaded", char.data);
+        console.log("Loading Character");
+        db.characters.find({name: data.name, password: hashPassword(data.password)}, function(err, character) {
+           if(err) {
+               client.emit("Character.Error", err);
+           } else {
+               if(!character) {
+                   client.emit("Character.Error", "Could not load Character.");
+               } else {
+                   serverCharacters[client.id] = loadCharacterFromJSON(character[0]);
+                   console.log(serverCharacters[client.id].data);
+                   client.emit("Character.Loaded", serverCharacters[client.id].data);
+               }
+           }
+        });
     });
 
-    client.on("Character.Save", function(data) {
-
+    client.on("Character.Save", function(charId) {
+        db.characters.update({_id: charId}, serverCharacters[charId]);
     });
 
-    client.on("Character.Location", function(coordinates) {
-        Events.emit("Character.Location", coordinates);
+    client.on("Character.Location.Change", function(coordinates) {
+        console.log(coordinates);
+        serverCharacters[client.id].updateLocation(coordinates.lat, coordinates.lon);
+        client.emit("Character.Environment.Update", serverCharacters[client.id].environment);
     });
 
     client.on('disconnect', function() {
         console.log("Client Disconnected.");
     });
 });
+
+/** Util Functions **/
+
+var hashPassword = function(password) {
+    return crypto.createHash('md5').update(password).digest("hex");
+};
+
+var loadCharacterFromJSON = function(character) {
+    var loadedCharacter = new Character(character.name, character.sex, character.Race, character.Class);
+    console.log(loadedCharacter);
+    loadedCharacter.loadFromJSON(character);
+    return loadedCharacter;
+};

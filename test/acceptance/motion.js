@@ -9,7 +9,7 @@ var Walky = new Character("Walky McWalkyface", "M", new Races.Human(), new Class
 for(var i = 0; i<10; i++) {
     Walky.updateLocation(Walky.location.lat+1, Walky.location.lon+1);
     for(var d in Walky.environment) {
-        if(Walky.environment[d].attackable) {
+        if(Walky.environment[d].canAttack) {
             Walky.attack(Walky.environment[d]);
         } else if(Walky.environment[d].gettable) {
             Walky.pickUp(Walky.environment[d]);

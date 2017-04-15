@@ -2,9 +2,26 @@
     <head>
         <title>Main Page</title>
         <style>
+            body {
+                background-color: #b29d6f;
+                font-family: "SilkScreen";
+            }
+
+            @font-face {
+                font-family: "SilkScreen";
+                src: url("/fonts/silkscreen/slkscr.ttf") format("truetype");
+            }
+
             .frameBorder {
                 border: solid 1px black;
                 text-align: center;
+            }
+            .topAndBottomBorder {
+                border-top: solid 1px black;
+                border-bottom: solid 1px black;
+            }
+            .envPanel {
+                cursor: pointer;
             }
             .clickable {
                 cursor: pointer;
@@ -12,25 +29,46 @@
             .direction {
                 border: 1px solid white;
             }
+            #title {
+                text-align: center;
+                font-size: 140pt;
+                font-family: "SilkScreen";
+            }
         </style>
         <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
         <script src="https://cdn.socket.io/socket.io-1.0.0.js"></script>
+        <script src="/js/util.js"></script>
+        <script src="/js/interaction.js"></script>
         <script>
-            var currentCoords = {lat: null, lon: null};
+            /** Globals **/
+            var socket = io('http://localhost:3000/');
+            var Character;
 
             $(document).ready(function() {
-                var socket = io('http://localhost:3000/');
                 socket.on('connect', function () {
-                    socket.on('response', function(message) {
-                        console.log(message);
-                    });
+                    console.log("Connected to Game sever.");
+                });
 
-                    socket.on("Character.Loaded", function(Character) {
-                        console.log(Character);
-                        loadCharacter(Character);
-                    });
+                socket.on("Character.Loaded", function(character) {
+                    console.log("Loaded Character");
+                    Character = character;
+                    loadCharacter(character);
+
+                    setInterval(function() {
+                        updateLocation();
+                    }, 5000);
+
+                    $("#title").hide();
+                    $(".gameUI").removeClass("hide");
+                    $("#loadCharacterModal").modal("hide");
+                    $("#newCharacterModal").modal("hide");
+                });
+
+                socket.on("Character.Environment.Update", function(environment) {
+                    console.log("Loading Environment");
+                    loadEnvironment(environment);
                 });
 
                 $("#newGame").on("click", function(e) {
@@ -45,33 +83,27 @@
                     //socket.send("event", {name: "Character.Create", content: {Name: "Test", Sex: "M", Race: "Orc", Class: "Warrior"}});
                 });
 
-//                $("#newCharacterSubmit").on("click", function(e) {
-//                    $("#newCharacterForm").submit();
-//                });
-//
-//                $("#loadCharacterSubmit").on("click", function(e) {
-//                    $("#loadCharacterForm").submit();
-//                });
+                $("#loadCharacterForm").on("submit", function(e) {
+                    e.preventDefault();
 
-//                $("#loadCharacterForm").on("submit", function(e) {
-//                    e.preventDefault();
-//
-//                    var values = {};
-//                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
-//                        values[field.name] = field.value;
-//                    });
-//
-//                    socket.emit("Character.Load", values);
-//                });
+                    var values = {};
+                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
+                        values[field.name] = field.value;
+                    });
 
-//                $("#newCharacterForm").on("submit", function() {
-//                    var values = {};
-//                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
-//                        values[field.name] = field.value;
-//                    });
-//
-//                    socket.emit("Character.Create", values);
-//                });
+                    socket.emit("Character.Load", values);
+                });
+
+                $("#newCharacterForm").on("submit", function(e) {
+                    e.preventDefault();
+
+                    var values = {};
+                    $.each($('#newCharacterForm').serializeArray(), function(i, field) {
+                        values[field.name] = field.value;
+                    });
+
+                    socket.emit("Character.Create", values);
+                });
 
                 $(".control").on("click", function(e) {
                     alert(this.id);
@@ -80,42 +112,6 @@
 
             populateClassesList();
             populateRacesList();
-
-            function populateClassesList() {
-                $.ajax({
-                    url: "http://localhost:8000/classes"
-                }).done(function(data) {
-                    if(data.ok) {
-                        arrayToSelect("#class", data.body);
-                    } else {
-                        alert("Error loading Class list.");
-                    }
-                });
-            }
-
-            function populateRacesList() {
-                $.ajax({
-                    url: "http://localhost:8000/races"
-                }).done(function(data) {
-                    if(data.ok) {
-                        arrayToSelect("#race", data.body);
-                    } else {
-                        alert("Error loading Race list.");
-                    }
-                });
-            }
-
-            function arrayToSelect(selectId, options) {
-                for(var i in options) {
-                    $(selectId).append("<option value='"+options[i]+"'>"+options[i]+"</option>");
-                }
-            }
-
-            function loadCharacter(Character) {
-                for(var a in Character) {
-                    $("#character"+a).text(Character[a]);
-                }
-            }
         </script>
     </head>
     <body>
@@ -123,34 +119,38 @@
             <ul id="mainMenu" class="nav nav-pills">
                 <li role="presentation"><a id="newGame" class="btn btn-default">New Character</a></li>
                 <li role="presentation"><a id="loadGame" class="btn btn-default">Load Character</a></li>
-                <li><a id="characterLatBtn" class="btn btn-default">Latitiude: <span id="characterLat"></span></a></li>
-                <li><a id="characterLonBtn" class="btn btn-default">Longitude: <span id="characterLon"></span></a></li>
             </ul>
         </div>
         <br>
-        <div class="col-lg-4 frameBorder">
-            <svg id="characterPanel" width="300" height="300">
-                <circle cx="150" cy="150" r="100"></circle>
-            </svg>
+        <div id="title" class="jumbotron">
+            OpenQuest
+        </div>
+        <div class="col-lg-5 topAndBottomBorder hide gameUI">
             <ul class="nav nav-tabs">
-                <li class="active"><a class="btn btn-default" data-toggle="tab" href="#statTab">Inventory</a></li>
+                <li class="active"><a class="btn btn-default" data-toggle="tab" href="#statTab">Status</a></li>
                 <li><a class="btn btn-default" data-toggle="tab" href="#magicTab">Magic</a></li>
                 <li><a class="btn btn-default" data-toggle="tab" href="#inventoryTab">Inventory</a></li>
             </ul>
             <div class="tab-content">
                 <div id="statTab" class="tab-pane fade in active">
                     <table id="statsTable" class="table table-striped">
-                        <tr>
-                            <td id="characterName"></td>
-                            <td id="characterClass"></td>
-                        </tr><tr>
+                    <tr>
+                        <td>Name</td><td id="characterName"></td>
+                        <td>Sex</td><td id="characterSex"></td>
+                    </tr>
+                    <tr>
+                        <td>Race</td><td id="characterRace"></td>
+                        <td>Class</td><td id="characterClass"></td>
+                    </tr>
+                    <tr>
+                        <td>Latitude</td><td id="characterLat"></td>
+                        <td>Longitude</td><td id="characterLon"></td>
+                    </tr>
+                    <tr>
                         <td>Level</td><td id="characterLevel"></td>
                         <td>Experience</td><td id="characterExperience"></td>
-                    </tr><tr>
-                    </tr><tr>
-                        <td>Sex</td><td id="characterSex"></td>
-                        <td>Race</td><td id="characterRace"></td>
-                    </tr><tr>
+                    </tr>
+                    <tr>
                         <td>Strength</td><td id="characterStrength"></td>
                         <td>Dexterity</td><td id="characterDexterity"></td>
                     </tr><tr>
@@ -186,28 +186,36 @@
                     <table id="inventoryTable"></table>
                 </div>
             </div>
+            <div id="actionsConsole">
+                <button id="attack" class="btn btn-standard" disabled="true">Attack</button>
+                <button id="interact" class="btn btn-standard" disabled="true">Interact</button>
+                <button id="pickUp" class="btn btn-standard" disabled="true">Pick Up</button>
+                <br>
+                <textarea id="console" class="form-control" rows="5" style="width:100%">
+
+                </textarea>
+            </div>
+            <br>
         </div>
-        <div class="col-lg-6 frameBorder">
-            <svg id="environmentPanel" width="600" height="600">
-                <rect id="northWest" x="0" y="0" width="200" height="200" class="direction clickable">NW</rect>
-                <rect id="north" x="200" y="0" width="200" height="200" class="direction clickable">N</rect>
-                <rect id="northEast" x="400" y="0" width="200" height="200" class="direction clickable">NE</rect>
-                <rect id="west" x="0" y="200" width="200" height="200" class="direction clickable">W</rect>
-                <rect id="charSquare" x="200" y="200" width="200" height="200" class="direction clickable"></rect>
-                <rect id="east" x="400" y="200" width="200" height="200" class="direction clickable">E</rect>
-                <rect id="southWest" x="0" y="400" width="200" height="200" class="direction clickable">SW</rect>
-                <rect id="south" x="200" y="400" width="200" height="200" class="direction clickable">S</rect>
-                <rect id="southEast" x="400" y="400" width="200" height="200" class="direction clickable">SE</rect>
-            </svg>
+        <div class="col-lg-6 frameBorder hide gameUI">
+            <svg id="dir_nw" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_n" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_ne" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_w" class="envPanel" width="200" height="200"></svg>
+            <svg id="center" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_e" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_sw" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_s" class="envPanel" width="200" height="200"></svg>
+            <svg id="dir_se" class="envPanel" width="200" height="200"></svg>
         </div>
-        <div class="col-lg-2 frameBorder">
-            <svg height="400" width="400">
-                <polygon id="up" points="120,100 90,150 150,150" fill="black" class="control clickable"></polygon>
-                <polygon id="left" points="40,200 80,240 80,160" fill="black" class="control clickable"></polygon>
-                <polygon id="right" points="200,200 160,240 160,160" fill="black" class="control clickable"></polygon>
-                <polygon id="down" points="120,300 90,250 150,250" fill="black" class="control clickable"></polygon>
-            </svg>
-        </div>
+        <!--<div class="col-lg-2 frameBorder">-->
+            <!--<svg height="400" width="400">-->
+                <!--<polygon id="up" points="120,100 90,150 150,150" fill="black" class="control clickable"></polygon>-->
+                <!--<polygon id="left" points="40,200 80,240 80,160" fill="black" class="control clickable"></polygon>-->
+                <!--<polygon id="right" points="200,200 160,240 160,160" fill="black" class="control clickable"></polygon>-->
+                <!--<polygon id="down" points="120,300 90,250 150,250" fill="black" class="control clickable"></polygon>-->
+            <!--</svg>-->
+        <!--</div>-->
         <div id="newCharacterModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -243,12 +251,9 @@
                             </div>
                             <div class="form-group">
                                 <button type="submit" class="btn btn-default">Submit</button>
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                             </div>
                         </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button id="newCharacterSubmit" type="button" class="btn btn-primary">Create</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
@@ -258,7 +263,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <h4 class="modal-title">New Game</h4>
+                        <h4 class="modal-title">Load Game</h4>
                     </div>
                     <div class="modal-body">
                         <form id="loadCharacterForm">
@@ -270,11 +275,11 @@
                                 <label for="loadPassword">Password</label>
                                 <input id="loadPassword" class="form-control" type="password" name="password">
                             </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-default">Login</button>
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            </div>
                         </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button id="loadCharacterSubmit" type="button" class="btn btn-primary">Login</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
