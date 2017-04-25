@@ -1,38 +1,54 @@
+var activeAudio;
+
 var consoleEl = "#console";
+var inventoryEl = "#playerInventory";
 
 $(document).ready(function() {
-
+    //setInterval(function() {
+    //    updateLocation();
+    //}, 10000);
 });
 
-function writeToConsole(message) {
-    console.log("should write to console");
-    var time = new Date().toTimeString();
-    $(consoleEl).text($(consoleEl).text()+"\n > "+time+" "+message);
+/** Actual Util Functions **/
+
+function playAudio(songName) {
+    //window.AudioContext = window.AudioContext||window.webkitAudioContext;
+    //context = new AudioContext();
+    if(Player && !Player.audioMuted && false) {
+        if(activeAudio) {
+            if(activeAudio.src.indexOf(songName) < 0) {
+                activeAudio.pause();
+                activeAudio = new Audio('/audio/'+songName+'.ogg');
+                activeAudio.loop = true;
+                activeAudio.play();
+            }
+        } else {
+            activeAudio = new Audio('/audio/'+songName+'.ogg');
+            activeAudio.loop = true;
+            activeAudio.play();
+        }
+    }
 }
 
-function populateClassesList() {
-    $.ajax({
-        url: "/classes"
-    }).done(function(data) {
-        if(data.ok) {
-            arrayToSelect("#class", data.body);
-        } else {
-            alert("Error loading Class list.");
-        }
-    });
+function mute() {
+    $("#unMuteBtn").removeClass("hide");
+    $("#muteBtn").addClass("hide");
+    activeAudio.pause();
+    Player.audioMuted = true;
 }
 
-function populateRacesList() {
-    $.ajax({
-        url: "/races"
-    }).done(function(data) {
-        if(data.ok) {
-            arrayToSelect("#race", data.body);
-        } else {
-            alert("Error loading Race list.");
-        }
-    });
+function unmute() {
+    $("#muteBtn").removeClass("hide");
+    $("#unMuteBtn").addClass("hide");
+    activeAudio.play();
+    Player.audioMuted = false;
 }
+
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+/** Game Specific Util Functions **/
 
 function arrayToSelect(selectId, options) {
     for(var i in options) {
@@ -40,55 +56,24 @@ function arrayToSelect(selectId, options) {
     }
 }
 
-function loadCharacter(Character) {
-    for(var a in Character) {
-        if(typeof Character[a] == "object") {
-            $("#character"+a).text(Character[a].name);
-        } else {
-            $("#character"+a).text(Character[a]);
+function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+    var expires = "expires="+d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
         }
     }
-
-    if(Character.Location.lat) {
-        $("#characterLat").text(Character.Location.lat);
-    } else {
-        $("#characterLat").text(0);
-    }
-
-    if(Character.Location.lon) {
-        $("#characterLat").text(Character.Location.lon);
-    } else {
-        $("#characterLat").text(0);
-    }
-}
-
-function updateLocation() {
-    if(navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            if(hasMoved(currentCoords, position.coords)) {
-                $("#characterLat").empty().append(position.coords.latitude);
-                $("#characterLon").empty().append(position.coords.longitude);
-                currentCoords.lat = position.coords.latitude;
-                currentCoords.lon = position.coords.longitude;
-                socket.emit("Character.Location.Change", currentCoords);
-            } else {
-                console.log("Haven't moved, no update.");
-            }
-        });
-    } else {
-        alert("Geolocation not supported.");
-    }
-}
-
-function hasMoved(current, newpos) {
-    return (Math.abs(current.lat - newpos.latitude) > 0.5 || Math.abs(current.lon - newpos.longitude));
-}
-
-function loadEnvironment(environment) {
-    for(var d in environment) {
-        $("#dir_"+d).empty().html(environment[d].svg);
-        localEnvironment[d] = environment[d];
-    }
-
-    console.log(localEnvironment);
+    return "";
 }

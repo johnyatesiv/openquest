@@ -2,21 +2,23 @@
 var express = require("express");
 var mongojs = require('mongojs');
 var bodyParser = require("body-parser");
-var crypto = require("crypto");
 
 /** Globals **/
-var app = express();
-var db = mongojs("openquest", ["characters"]);
 var libPath = "./lib/";
-var serverCharacters = {};
+var app = express();
+var db = require(libPath+"DB.js");
+var serverPlayers = {};
 
 /** Game Deps **/
 var Events = require(libPath+"Events.js");
-var Character = require(libPath+"Character.js");
+var Environments = require(libPath+"Environments.js");
+var Player = require(libPath+"Player.js");
 var Classes = require(libPath+"Classes.js");
 var Item = require(libPath+"Items.js");
 var Mechanics = require(libPath+"Mechanics.js");
-var Races = require(libPath+"Races.js");
+var Monsters = require(libPath+"Monsters.js");
+var Species = require(libPath+"Species.js");
+var Util = require(libPath+"Util.js");
 
 /** Server Config **/
 var server = require('http').createServer();
@@ -27,8 +29,11 @@ app.engine('.html', require('ejs').__express);
 app.set('views', __dirname + '/public/views'); //Set views path to that same html folder
 app.set('view engine', 'html'); //Instead of .ejs, look for .html extension
 
-app.use('/fonts', express.static('./public/fonts'));
+app.use('/favicon.ico', express.static('./favicon.ico'));
+app.use('/audio', express.static('./public/audio'));
 app.use('/css', express.static('./public/css'));
+app.use('/fonts', express.static('./public/fonts'));
+app.use('/img', express.static('./public/img'));
 app.use('/js', express.static('./public/js'));
 
 app.listen(8000, function () {
@@ -43,100 +48,206 @@ app.get('/', function(req,res) {
 
 app.get("/classes", function (req, res) {
     res.header('Access-Control-Allow-Origin', '*');
-    var response = {ok: true, body: []};
-
-    for(var c in Classes) {
-        response.body.push(c);
-    }
-
-    res.json(response);
-});
-
-app.get("/races", function(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
-    var response = {ok: true, body: []};
-
-    for(var r in Races) {
-        response.body.push(r);
-    }
-
-    res.json(response);
-});
-
-app.post("/character", function(req, res) {
-    res.header('Access-Control-Allow-Origin', '*');
-    var character = req.body;
-    var hash = crypto.createHash('md5').update(req.body.password).digest("hex");
-    var newCharacter = new Character(character.name, hash, character.sex, new Races[character.race](), new Classes[character.class]());
-    db.characters.insert(newCharacter, function(err, docs) {
-        console.log(docs);
+    db.classes.find({}, function(err, docs) {
+        res.json({ok: true, body: docs});
     });
 });
 
-app.get("/character", function(req, res) {
+app.get("/species", function(req, res) {
     res.header('Access-Control-Allow-Origin', '*');
-    db.find({name: req.body.name, password: crypto.createHash('md5').update(req.body.password).digest("hex")})
+    db.species.find({}, function(err, docs) {
+        res.json({ok: true, body: docs});
+    });
+
 });
+
+//app.post("/player", function(req, res) {
+//    res.header('Access-Control-Allow-Origin', '*');
+//    var newPlayer = new Player(req.body.name, req.body.sex, req.body.species, req.body.class);
+//    newPlayer.password = crypto.createHash('md5').update(req.body.password).digest("hex");
+//    db.players.insert(newPlayer, function(err, docs) {
+//        console.log(docs);
+//    });
+//});
+//
+//app.get("/player", function(req, res) {
+//    res.header('Access-Control-Allow-Origin', '*');
+//    db.find({name: req.body.name, password: crypto.createHash('md5').update(req.body.password).digest("hex")})
+//});
 
 /** Socket Communication **/
 var io = require('socket.io')(server);
-io.on('connection', function(client){
+io.on('connection', function(client) {
     console.log("Client Connected");
-
-    client.on('Character.Create', function(character) {
-        character.socketId = client.id;
-        character.password = hashPassword(character.password);
-        console.log(character);
-        var newCharacter = new Character(character.name, character.sex, new Races[character.race](), new Classes[character.class]());
-        console.log(newCharacter);
-
-        db.characters.insert(character, function(err, docs) {
-            serverCharacters[docs[0].id] = docs[0];
-            client.emit("Character.Loaded", newCharacter.data);
-        });
-    });
-
-    client.on("Character.Load", function(data) {
-        console.log("Loading Character");
-        db.characters.find({name: data.name, password: hashPassword(data.password)}, function(err, character) {
-           if(err) {
-               client.emit("Character.Error", err);
-           } else {
-               if(!character) {
-                   client.emit("Character.Error", "Could not load Character.");
-               } else {
-                   serverCharacters[client.id] = loadCharacterFromJSON(character[0]);
-                   console.log(serverCharacters[client.id].data);
-                   client.emit("Character.Loaded", serverCharacters[client.id].data);
-               }
-           }
-        });
-    });
-
-    client.on("Character.Save", function(charId) {
-        db.characters.update({_id: charId}, serverCharacters[charId]);
-    });
-
-    client.on("Character.Location.Change", function(coordinates) {
-        console.log(coordinates);
-        serverCharacters[client.id].updateLocation(coordinates.lat, coordinates.lon);
-        client.emit("Character.Environment.Update", serverCharacters[client.id].environment);
-    });
 
     client.on('disconnect', function() {
         console.log("Client Disconnected.");
+    });
+
+    client.on('Player.Create', function(data) {
+        db.classes.findOne({name: data.class}, function(err, classDoc) {
+            if(err || classDoc == null) {
+                client.emit("Player.Create.Error", err);
+            } else {
+                db.species.findOne({name: data.species}, function(err, speciesDoc) {
+                    if(err || speciesDoc == null) {
+                        client.emit("Player.Create.Error", err);
+                    } else {
+                        var player = new Player(data.name, data.sex, new Species(speciesDoc), new Classes(classDoc));
+                        player.password = Util.hash(data.password);
+                        db.players.insert(player, function(err, docs) {
+                            serverPlayers[docs._id] = player;
+                            client.emit("Player.Loaded", player.data);
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    client.on("Player.Load", function(data) {
+        console.log("Loading from login...");
+        loadFromDB(client, data.name, Util.hash(data.password));
+    });
+
+    client.on("Player.Load.FromCache", function(data) {
+        console.log("Loading from cached data...");
+        loadFromDB(client, data.name, data.password);
+    });
+
+    client.on("Player.Save", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            console.log("Saving Player...");
+            db.players.update({_id: mongojs.ObjectId(_id)}, player);
+        });
+    });
+
+    client.on("Player.Revive", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            player.revive();
+        });
+    });
+
+    client.on("Player.Location.Update", function(coordinates) {
+        getPlayer(coordinates._id, client, function(err, player) {
+            player.updateLocation(coordinates.lat, coordinates.lng);
+        });
+    });
+
+    client.on("Player.Location.Search", function(coordinates) {
+        getPlayer(coordinates._id, client, function(err, player) {
+            player.searchLocation(coordinates.lat, coordinates.lng);
+        });
+    });
+
+    client.on("Player.Environment.Update", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            player.generateEnvironment();
+        });
+    });
+
+    client.on("Player.Environment.Interact", function(_id) {
+         getPlayer(_id, client, function(err, player) {
+             player.interact();
+         });
+    });
+
+    /** Attacks **/
+
+    client.on("Player.Attack", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            Mechanics.NPCCombat(player);
+        });
+    });
+
+    /** Spell Methods **/
+
+    client.on("Player.Spell.Cast", function(spell) {
+        getPlayer(spell._id, client, function(err, player) {
+            Mechanics.magicCast(Player, spell.slot);
+        });
+    });
+
+    client.on("Player.Enchant.Cast", function(spell) {
+        getPlayer(spell._id, client, function(err, player) {
+            player.Spells[spell.name].effect(player, player.Inventory[spell.itemName]);
+            client.emit("Item.Updated", player.Inventory[spell.itemName]);
+        });
+    });
+
+    /** Item Methods **/
+
+    client.on("Player.Item.Equip", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.equip(data.itemSlot, data.equipSlot);
+        });
+    });
+
+    client.on("Player.Item.Unequip", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.unequip(data.equipSlot);
+        });
+    });
+
+    client.on("Player.Item.Move", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.addToInventory()
+        });
+    });
+
+    client.on("Player.Item.Use", function(item) {
+
+    });
+
+    client.on("Player.Item.Throw", function(item) {
+
+    });
+
+    client.on("Player.Update.Experience", function(update) {
+        getPlayer(update._id, client, function(err, player) {
+            player.Experience = update.experience;
+        });
     });
 });
 
 /** Util Functions **/
 
-var hashPassword = function(password) {
-    return crypto.createHash('md5').update(password).digest("hex");
+function loadFromDB(client, name, password) {
+    db.players.findOne({name: name, password: password}, function(err, player) {
+        if(err) {
+            client.emit("Player.Error", err);
+        } else {
+            if(!player) {
+                client.emit("Player.Error", "Could not load Player.");
+            } else {
+                serverPlayers[Player._id] = loadPlayerFromJSON(player);
+                client.emit("Player.Loaded", serverPlayers[Player._id].data);
+            }
+        }
+    });
+}
+
+var loadPlayerFromJSON = function(player) {
+    var instance = new Player(player.name, player.sex, player.Species, player.Class);
+    instance.load(player);
+    return instance;
 };
 
-var loadCharacterFromJSON = function(character) {
-    var loadedCharacter = new Character(character.name, character.sex, character.Race, character.Class);
-    console.log(loadedCharacter);
-    loadedCharacter.loadFromJSON(character);
-    return loadedCharacter;
+var getPlayer = function(_id, socket, cb) {
+    if(serverPlayers[_id]) {
+        serverPlayers[_id].socket = socket;
+        cb(null, serverPlayers[_id]);
+    } else {
+        db.players.findOne({_id: mongojs.ObjectId(_id)}, function(err, player) {
+            if(err) {
+                cb(err, null);
+            } else if(!player) {
+                cb("Could not find player.", null);
+            } else {
+                serverPlayers[_id] = loadPlayerFromJSON(player);
+                serverPlayers[_id].socket = socket;
+                cb(null, serverPlayers[_id]);
+            }
+        });
+    }
 };

@@ -1,5 +1,7 @@
+.DS_Store
+.idea
 node_modules
-*.idea
-*.DS_Store
-public/.DS_Store
+.idea
+./public/.DS_Store
+./lib/.DS_Store
 

@@ -1,222 +1,255 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <html>
     <head>
         <title>Main Page</title>
-        <style>
-            body {
-                background-color: #b29d6f;
-                font-family: "SilkScreen";
-            }
-
-            @font-face {
-                font-family: "SilkScreen";
-                src: url("/fonts/silkscreen/slkscr.ttf") format("truetype");
-            }
-
-            .frameBorder {
-                border: solid 1px black;
-                text-align: center;
-            }
-            .topAndBottomBorder {
-                border-top: solid 1px black;
-                border-bottom: solid 1px black;
-            }
-            .envPanel {
-                cursor: pointer;
-            }
-            .clickable {
-                cursor: pointer;
-            }
-            .direction {
-                border: 1px solid white;
-            }
-            #title {
-                text-align: center;
-                font-size: 140pt;
-                font-family: "SilkScreen";
-            }
-        </style>
         <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+        <script src="/js/jquery-ui/jquery-ui.min.js"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="/css/main.css">
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
         <script src="https://cdn.socket.io/socket.io-1.0.0.js"></script>
+        <script src="/js/main.js"></script>
+        <!--<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTMp_mARUngh-om2L63wO5raxvLx-M3Lc&callback=initMap" async defer></script>-->
+        <script src="/js/gui.js"></script>
         <script src="/js/util.js"></script>
         <script src="/js/interaction.js"></script>
-        <script>
-            /** Globals **/
-            var socket = io('http://localhost:3000/');
-            var Character;
-
-            $(document).ready(function() {
-                socket.on('connect', function () {
-                    console.log("Connected to Game sever.");
-                });
-
-                socket.on("Character.Loaded", function(character) {
-                    console.log("Loaded Character");
-                    Character = character;
-                    loadCharacter(character);
-
-                    setInterval(function() {
-                        updateLocation();
-                    }, 5000);
-
-                    $("#title").hide();
-                    $(".gameUI").removeClass("hide");
-                    $("#loadCharacterModal").modal("hide");
-                    $("#newCharacterModal").modal("hide");
-                });
-
-                socket.on("Character.Environment.Update", function(environment) {
-                    console.log("Loading Environment");
-                    loadEnvironment(environment);
-                });
-
-                $("#newGame").on("click", function(e) {
-                    $("#newCharacterModal").modal("show");
-                    $("#loadCharacterModal").modal("hide");
-                    //socket.send("event", {name: "Character.Create", content: {Name: "Test", Sex: "M", Race: "Orc", Class: "Warrior"}});
-                });
-
-                $("#loadGame").on("click", function(e) {
-                    $("#loadCharacterModal").modal("show");
-                    $("#newCharacterModal").modal("hide");
-                    //socket.send("event", {name: "Character.Create", content: {Name: "Test", Sex: "M", Race: "Orc", Class: "Warrior"}});
-                });
-
-                $("#loadCharacterForm").on("submit", function(e) {
-                    e.preventDefault();
-
-                    var values = {};
-                    $.each($('#loadCharacterForm').serializeArray(), function(i, field) {
-                        values[field.name] = field.value;
-                    });
-
-                    socket.emit("Character.Load", values);
-                });
-
-                $("#newCharacterForm").on("submit", function(e) {
-                    e.preventDefault();
-
-                    var values = {};
-                    $.each($('#newCharacterForm').serializeArray(), function(i, field) {
-                        values[field.name] = field.value;
-                    });
-
-                    socket.emit("Character.Create", values);
-                });
-
-                $(".control").on("click", function(e) {
-                    alert(this.id);
-                });
-            });
-
-            populateClassesList();
-            populateRacesList();
-        </script>
     </head>
     <body>
-        <div class="nav">
-            <ul id="mainMenu" class="nav nav-pills">
-                <li role="presentation"><a id="newGame" class="btn btn-default">New Character</a></li>
-                <li role="presentation"><a id="loadGame" class="btn btn-default">Load Character</a></li>
-            </ul>
-        </div>
-        <br>
         <div id="title" class="jumbotron">
-            OpenQuest
+            &nbsp;OpenQuest
+            <br>
+            <a id="newGame" class="btn btn-default">New Player</a>
+            <a id="loadGame" class="btn btn-default">Load Player</a>
+            <a id="continue" class="btn btn-default hidden">Continue</a>
+            <br>
         </div>
-        <div class="col-lg-5 topAndBottomBorder hide gameUI">
-            <ul class="nav nav-tabs">
-                <li class="active"><a class="btn btn-default" data-toggle="tab" href="#statTab">Status</a></li>
-                <li><a class="btn btn-default" data-toggle="tab" href="#magicTab">Magic</a></li>
-                <li><a class="btn btn-default" data-toggle="tab" href="#inventoryTab">Inventory</a></li>
-            </ul>
-            <div class="tab-content">
-                <div id="statTab" class="tab-pane fade in active">
-                    <table id="statsTable" class="table table-striped">
-                    <tr>
-                        <td>Name</td><td id="characterName"></td>
-                        <td>Sex</td><td id="characterSex"></td>
-                    </tr>
-                    <tr>
-                        <td>Race</td><td id="characterRace"></td>
-                        <td>Class</td><td id="characterClass"></td>
-                    </tr>
-                    <tr>
-                        <td>Latitude</td><td id="characterLat"></td>
-                        <td>Longitude</td><td id="characterLon"></td>
-                    </tr>
-                    <tr>
-                        <td>Level</td><td id="characterLevel"></td>
-                        <td>Experience</td><td id="characterExperience"></td>
-                    </tr>
-                    <tr>
-                        <td>Strength</td><td id="characterStrength"></td>
-                        <td>Dexterity</td><td id="characterDexterity"></td>
-                    </tr><tr>
-                        <td>Constitution</td><td id="characterConstitution"></td>
-                        <td>Intelligence</td><td id="characterIntelligence"></td>
-                    </tr><tr>
-                        <td>Magic</td><td id="characterMagic"></td>
-                        <td>Spirit</td><td id="characterSpirit"></td>
-                    </tr>
-                    </table>
-                </div>
-                <div id="magicTab" class="tab-pane fade">
-                    <table id="magicTable" class="table table-striped">
+        <div id="envPanel" class="col-lg-6 gameUIPanel frameBorder hide gameUI">
+            <div id="environmentStats">
+                <div id="envTerrain" class="travelUI"></div>
+                <div id="monster" class="combatUI hide">
+                    <div id="monsterImage"></div>
+                    <table id="monsterTable" class="hide combatUI">
                         <tr>
-                            <td>Fire</td><td id="characterFire"></td>
-                            <td>Ice</td><td id="characterIce"></td>
+                            <td id="monsterName"></td>
                         </tr>
                         <tr>
-                            <td>Thunder</td><td id="characterThunder"></td>
-                            <td>Earth</td><td id="characterEarth"></td>
-                        </tr>
-                        <tr>
-                            <td>Water</td><td id="characterWater"></td>
-                            <td>Wood</td><td id="characterWood"></td>
-                        </tr>
-                        <tr>
-                            <td>Toxin</td><td id="characterToxin"></td>
-                            <td>Holy</td><td id="characterHoly"></td>
+                            <td id="monsterHealth"></td>
                         </tr>
                     </table>
-                </div>
-                <div id="inventoryTab" class="tab-pane fade">
-                    <table id="inventoryTable"></table>
                 </div>
             </div>
-            <div id="actionsConsole">
-                <button id="attack" class="btn btn-standard" disabled="true">Attack</button>
-                <button id="interact" class="btn btn-standard" disabled="true">Interact</button>
-                <button id="pickUp" class="btn btn-standard" disabled="true">Pick Up</button>
-                <br>
-                <textarea id="console" class="form-control" rows="5" style="width:100%">
-
-                </textarea>
+            <div id="map" class="col-md-12 travelUI">
+                <!--<iframe-->
+                <!--width="100%"-->
+                <!--height="100%"-->
+                <!--frameborder="0" style="border:0"-->
+                <!--src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCQOYmW2ZOlbJRLSWtHyla0Hx40LaKmBtg&q=Space+Needle,Seattle+WA" allowfullscreen>-->
+                <!--</iframe>-->
+            </div>
+            <div id="travelBtns" class="col-md-12 commandBtns travelUI">
+                <!--<button id="moveBtn" class="btn btn-standard UIBtn">Move</button>-->
+                <!--<button id="searchBtn" class="btn btn-standard UIBtn">Search</button>-->
+                <!--<button id="interactBtn" class="btn btn-standard UIBtn">Interact</button>-->
+            </div>
+            <div id="combatBtns" class="col-md-12 commandBtns combatUI hide">
+                <button id="physicalAttackBtn" class="btn btn-standard UIBtn">Attack</button>
+                <button id="attackSpellBtn" class="btn btn-standard UIBtn">Spell</button>
+                <button id="skillAttackBtn" class="btn btn-standard UIBtn">Outmaneuver</button>
+                <button id="mentalAttackBtn" class="btn btn-standard UIBtn">Outwit</button>
+                <button id="runBtn" class="btn btn-standard UIBtn">Run</button>
+            </div>
+            <textarea id="console" class="col-md-12 form-control" rows="5"></textarea>
+        </div>
+        <div class="col-lg-6 hide gameUI gameUIPanel">
+            <br>
+            <div id="mainBtnsDiv" class="col-lg-12">
+                <ul class="nav nav-tabs" style="border-bottom:0">
+                    <li><a id="saveBtn" class="btn btn-default menuTab">Save</a></li>
+                    <li><a id="muteBtn" class="btn btn-default menuTab">Mute</a></li>
+                    <li><a id="unMuteBtn" class="btn btn-default menuTab hide">Unmute</a></li>
+                    <li class="active"><a class="btn btn-default menuTab" data-toggle="tab" href="#overviewTab">Status</a></li>
+                    <li><a class="btn btn-default menuTab" data-toggle="tab" href="#inventoryTab">Inventory</a></li>
+                    <li><a class="btn btn-default menuTab" data-toggle="tab" href="#magicTab">Magic</a></li>
+                </ul>
+            </div>
+            <div class="tab-content col-lg-12">
+                <div id="overviewTab" class="dataTableDiv tab-pane fade in active">
+                    <table id="overviewTable" class="table dataTable">
+                        <tr>
+                            <td id="player_name"></td>
+                            <td id="player_sex"></td>
+                            <td id="player_Species"></td>
+                            <td id="player_Class"></td>
+                        </tr>
+                        <tr>
+                            <td>Health</td>
+                            <td id="player_health"></td>
+                            <td>Mana</td>
+                            <td id="player_mana"></td>
+                        </tr>
+                        <tr>
+                            <td>Latitude</td>
+                            <td id="player_lat"></td>
+                            <td>Longitude</td>
+                            <td id="player_lon"></td>
+                        </tr>
+                        <tr>
+                            <td>Level</td>
+                            <td id="player_level"></td>
+                            <td>Experience</td>
+                            <td id="player_experience"></td>
+                        </tr>
+                        <tr>
+                            <td>Strength</td>
+                            <td id="player_strength"></td>
+                            <td>Dexterity</td>
+                            <td id="player_dexterity"></td>
+                        </tr><tr>
+                            <td>Constitution</td>
+                            <td id="player_constitution"></td>
+                            <td>Intelligence</td>
+                            <td id="player_intelligence"></td>
+                        </tr><tr>
+                            <td>Magic</td>
+                            <td id="player_magic"></td>
+                            <td>Spirit</td>
+                            <td id="player_spirit"></td>
+                        </tr>
+                    </table>
+                    <table id="magicTable" class="table dataTable">
+                        <tr>
+                            <td>Fire</td><td id="player_fire"></td>
+                            <td>Ice</td><td id="player_ice"></td>
+                        </tr>
+                        <tr>
+                            <td>Thunder</td><td id="player_thunder"></td>
+                            <td>Earth</td><td id="player_earth"></td>
+                        </tr>
+                        <tr>
+                            <td>Water</td><td id="player_water"></td>
+                            <td>Wood</td><td id="player_wood"></td>
+                        </tr>
+                        <tr>
+                            <td>Metal</td><td id="player_metal"></td>
+                            <td>Ether</td><td id="player_ether"></td>
+                        </tr>
+                        <tr>
+                            <td>Toxin</td><td id="player_toxin"></td>
+                            <td>Holy</td><td id="player_holy"></td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="inventoryTab" class="dataTableDiv tab-pane fade in">
+                    <table id="equipTable" class="table dataTable">
+                        <tr>
+                            <td>Head</td><td id="playerHead" class="equipSlot dropSlot" data-slot="Head"></td>
+                            <td>Neck</td><td id="playerNeck" class="equipSlot dropSlot" data-slot="Neck"></td>
+                        </tr>
+                        <tr>
+                            <td>Left Hand</td><td id="playerLeftHand" class="equipSlot dropSlot" data-slot="LeftHand"></td>
+                            <td>Right Hand</td><td id="playerRightHand" class="equipSlot dropSlot" data-slot="RightHand"></td>
+                        </tr><tr>
+                            <td>Left Finger</td><td id="playerLeftFinger" class="equipSlot dropSlot" data-slot="LeftFinger"></td>
+                            <td>Right Finger</td><td id="playerRightFinger" class="equipSlot dropSlot" data-slot="RightFinger"></td>
+                        </tr>
+                        <tr>
+                            <td>Body</td><td id="playerBody" class="equipSlot dropSlot" data-slot="Body"></td>
+                            <td>Belt</td><td id="playerBelt" class="equipSlot dropSlot" data-slot="Belt"></td>
+                        </tr>
+                        <tr>
+                            <td>Legs</td><td id="playerLegs" class="equipSlot dropSlot" data-slot="Legs"></td>
+                            <td>Feet</td><td id="playerFeet" class="equipSlot dropSlot" data-slot="Feet"></td>
+                        </tr>
+                    </table>
+                    <table id="inventoryTable" class="table dataTable">
+                        <tr>
+                            <td id="invSlot1" class="invSlot dropSlot"></td>
+                            <td id="invSlot2" class="invSlot dropSlot"></td>
+                            <td id="invSlot3" class="invSlot dropSlot"></td>
+                            <td id="invSlot4" class="invSlot dropSlot"></td>
+                        </tr><tr>
+                            <td id="invSlot5" class="invSlot dropSlot"></td>
+                            <td id="invSlot6" class="invSlot dropSlot"></td>
+                            <td id="invSlot7" class="invSlot dropSlot"></td>
+                            <td id="invSlot8" class="invSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="invSlot9" class="invSlot dropSlot"></td>
+                            <td id="invSlot10" class="invSlot dropSlot"></td>
+                            <td id="invSlot11" class="invSlot dropSlot"></td>
+                            <td id="invSlot12" class="invSlot dropSlot"></td>
+                        </tr><tr>
+                            <td id="invSlot13" class="invSlot dropSlot"></td>
+                            <td id="invSlot14" class="invSlot dropSlot"></td>
+                            <td id="invSlot15" class="invSlot dropSlot"></td>
+                            <td id="invSlot16" class="invSlot dropSlot"></td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="magicTab" class="dataTableDiv tab-pane fade in">
+                    <table id="spellTable" class="table dataTable">
+                        <tr>
+                            <td id="spellSlot0" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot1" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot2" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot3" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot4" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot5" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot6" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot7" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot8" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot9" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot10" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot11" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot12" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot13" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot14" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot15" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot16" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot17" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot18" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot19" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot20" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot21" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot22" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot23" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot24" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot25" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot26" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot27" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot28" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot29" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot30" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot31" class="spellSlot dropSlot"></td>
+                        </tr>
+                        <tr>
+                            <td id="spellSlot32" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot33" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot34" class="spellSlot dropSlot"></td>
+                            <td id="spellSlot35" class="spellSlot dropSlot"></td>
+                        </tr>
+                    </table>
+                </div>
             </div>
             <br>
         </div>
-        <div class="col-lg-6 frameBorder hide gameUI">
-            <svg id="dir_nw" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_n" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_ne" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_w" class="envPanel" width="200" height="200"></svg>
-            <svg id="center" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_e" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_sw" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_s" class="envPanel" width="200" height="200"></svg>
-            <svg id="dir_se" class="envPanel" width="200" height="200"></svg>
-        </div>
-        <!--<div class="col-lg-2 frameBorder">-->
-            <!--<svg height="400" width="400">-->
-                <!--<polygon id="up" points="120,100 90,150 150,150" fill="black" class="control clickable"></polygon>-->
-                <!--<polygon id="left" points="40,200 80,240 80,160" fill="black" class="control clickable"></polygon>-->
-                <!--<polygon id="right" points="200,200 160,240 160,160" fill="black" class="control clickable"></polygon>-->
-                <!--<polygon id="down" points="120,300 90,250 150,250" fill="black" class="control clickable"></polygon>-->
-            <!--</svg>-->
-        <!--</div>-->
-        <div id="newCharacterModal" class="modal fade" tabindex="-1" role="dialog">
+        <!-- Modals -->
+        <div id="newPlayerModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -224,8 +257,8 @@
                         <h4 class="modal-title">New Game</h4>
                     </div>
                     <div class="modal-body">
-                        <p>New Character</p>
-                        <form id="newCharacterForm" action="/character" method="POST">
+                        <p>New Player</p>
+                        <form id="newPlayerForm" action="/player" method="POST">
                             <div class="form-group">
                                 <label for="name">Name</label>
                                 <input id="name" class="form-control" type="text" name="name">
@@ -242,8 +275,8 @@
                                 <select id="class" class="form-control" name="class"></select>
                             </div>
                             <div class="form-group">
-                                <label for="race">Race</label>
-                                <select id="race" class="form-control" name="race"></select>
+                                <label for="species">Species</label>
+                                <select id="species" class="form-control" name="species"></select>
                             </div>
                             <div class="form-group">
                                 <label for="password">Password</label>
@@ -258,7 +291,7 @@
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
         </div>
-        <div id="loadCharacterModal" class="modal fade" tabindex="-1" role="dialog">
+        <div id="loadPlayerModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -266,7 +299,7 @@
                         <h4 class="modal-title">Load Game</h4>
                     </div>
                     <div class="modal-body">
-                        <form id="loadCharacterForm">
+                        <form id="loadPlayerForm">
                             <div class="form-group">
                                 <label for="loadName">Name</label>
                                 <input id="loadName" class="form-control" type="text" name="name">
@@ -280,6 +313,64 @@
                                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                             </div>
                         </form>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div><!-- /.modal-dialog -->
+        </div>
+        <div id="combatModal"class="modal fade commandModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Combat</h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                </div><!-- /.modal-content -->
+            </div>
+        </div>
+        <div id="magicModal" class="modal fade commandModal" tabindex="-1" role="dialog" data-spellName="">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Magic</h4>
+                    </div>
+                    <div class="modal-body">
+                        <button id="enchantSpellBtn" class="btn btn-standard UIBtn">Enchant</button>
+                        <button id="restoreSpellBtn" class="btn btn-standard UIBtn">Restore</button>
+                        <button id="buffSpellBtn" class="btn btn-standard UIBtn">Enhance</button>
+                        <button id="summonSpellBtn" class="btn btn-standard UIBtn">Summon</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div>
+        </div>
+        <div id="itemModal" class="modal fade commandModal" tabindex="-1" role="dialog" data-itemId="">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">Items</h4>
+                    </div>
+                    <div class="modal-body">
+                        <button id="itemConsume" class="btn btn-standard UIBtn">Consume</button>
+                        <button id="itemThrow" class="btn btn-standard UIBtn">Throw</button>
+                        <button id="itemDiscard" class="btn btn-standard UIBtn">Discard</button>
+                    </div>
+                </div><!-- /.modal-content -->
+            </div>
+        </div>
+        <div id="ripModal" class="modal fade commandModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Game Over</h4>
+                    </div>
+                    <div class="modal-body">
+                        RIP you died lol
+                        <br>
+                        <br>
+                        <button id="reviveBtn" class="btn btn-standard">Revive</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div><!-- /.modal-dialog -->
