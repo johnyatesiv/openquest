@@ -22,7 +22,7 @@ var Util = require(libPath+"Util.js");
 
 /** Server Config **/
 var server = require('http').createServer();
-server.listen(3000);
+server.listen(8888);
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.engine('.html', require('ejs').__express);

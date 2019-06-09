@@ -1,5 +1,5 @@
 /** Globals **/
-var socket = io('http://localhost:3000/');
+var socket = io('http://localhost:8888/');
 var Player = null;
 
 $(window).bind('beforeunload',function(){
