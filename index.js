@@ -14,7 +14,7 @@ var Events = require(libPath+"Events.js");
 var Environments = require(libPath+"Environments.js");
 var Player = require(libPath+"Player.js");
 var Classes = require(libPath+"Classes.js");
-var Item = require(libPath+"Items.js");
+var Items = require(libPath+"Items.js");
 var Mechanics = require(libPath+"Mechanics.js");
 var Monsters = require(libPath+"Monsters.js");
 var Species = require(libPath+"Species.js");
@@ -160,22 +160,40 @@ io.on('connection', function(client) {
         });
     });
 
+    client.on("Player.SkillAttack", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            Mechanics.skillAttack(player);
+        });
+    });
+
+    client.on("Player.MentalAttack", function(_id) {
+        getPlayer(_id, client, function(err, player) {
+            Mechanics.mentalAttack(player);
+        });
+    });
+
     /** Spell Methods **/
 
     client.on("Player.Spell.Cast", function(spell) {
         getPlayer(spell._id, client, function(err, player) {
-            Mechanics.magicCast(Player, spell.slot);
+            Mechanics.magicCast(player, spell.slot);
         });
     });
 
     client.on("Player.Enchant.Cast", function(spell) {
         getPlayer(spell._id, client, function(err, player) {
-            player.Spells[spell.name].effect(player, player.Inventory[spell.itemName]);
+            player.spells[spell.name].effect(player, player.Inventory[spell.itemName]);
             client.emit("Item.Updated", player.Inventory[spell.itemName]);
         });
     });
 
     /** Item Methods **/
+
+    client.on("Player.Item.Pickup", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.addToInventory(new Item(data.item));
+        });
+    });
 
     client.on("Player.Item.Equip", function(data) {
         getPlayer(data._id, client, function(err, player) {
@@ -195,12 +213,34 @@ io.on('connection', function(client) {
         });
     });
 
-    client.on("Player.Item.Use", function(item) {
-
+    client.on("Player.Item.Use", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            if(player.inventory[data.slot].effect(player)) {
+                player.emit("Player.Environment.Interacted", player.inventory[data.slot].onUseMessage);
+                player.inventory[data.slot] = null;
+                player.refresh();
+            } else {
+                player.emit("Player.Environment.Interacted", "No effect.");
+            }
+        });
     });
 
-    client.on("Player.Item.Throw", function(item) {
+    client.on("Player.Item.Throw", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.inventory[data.slot].throwAt(player.Target);
+            player.inventory[data.slot] = null;
+            player.refreshInventory();
+            if(player.Target) {
+                player.emit("Target.Updated.Health", player.Target.Health);
+            }
+        });
+    });
 
+    client.on("Player.Item.Drop", function(data) {
+        getPlayer(data._id, client, function(err, player) {
+            player.inventory[data.slot] = null;
+            player.refreshInventory();
+        });
     });
 
     client.on("Player.Update.Experience", function(update) {
@@ -221,6 +261,7 @@ function loadFromDB(client, name, password) {
                 client.emit("Player.Error", "Could not load Player.");
             } else {
                 serverPlayers[Player._id] = loadPlayerFromJSON(player);
+                console.log(serverPlayers[Player._id].inventory);
                 client.emit("Player.Loaded", serverPlayers[Player._id].data);
             }
         }

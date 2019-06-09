@@ -23,9 +23,12 @@ $(document).ready(function() {
 
     socket.on("Player.Loaded", function(player) {
         console.log("Loading "+player.name);
-        console.log(player);
         loadPlayer(player);
         loadGame();
+    });
+
+    socket.on("Player.Load.Fail", function(error) {
+
     });
 
     socket.on("Player.Target.Updated", function(environment) {
@@ -75,8 +78,6 @@ $(document).ready(function() {
     $("#console").change(function() {
         $(this).scrollTop($(this)[0].scrollHeight);
     });
-
-
 });
 
 populateClassesList();

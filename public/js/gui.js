@@ -2,17 +2,20 @@ var map, infoWindow;
 
 /** General **/
 function updateLocation() {
-    if(navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            $("#playerLat").empty().append(position.coords.latitude.toFixed(4));
-            $("#playerLon").empty().append(position.coords.longitude.toFixed(4));
-            currentCoords.lat = position.coords.latitude;
-            currentCoords.lng = position.coords.longitude;
-            updateMap();
-            socket.emit("Player.Location.Update", getCurrentCoords());
-        });
-    } else {
-        alert("Geolocation not supported.");
+    if(Player) {
+        if(navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                $("#playerLat").empty().append(position.coords.latitude.toFixed(4));
+                $("#playerLon").empty().append(position.coords.longitude.toFixed(4));
+                currentCoords.lat = position.coords.latitude;
+                currentCoords.lng = position.coords.longitude;
+                console.log(currentCoords);
+                //updateMap();
+                socket.emit("Player.Location.Update", getCurrentCoords());
+            });
+        } else {
+            alert("Geolocation not supported.");
+        }
     }
 }
 
@@ -71,8 +74,8 @@ function loadPlayerStats() {
         }
     }
 
-    $("#playerHealth").empty().text(Player.health+"/"+Player.maxHealth);
-    $("#playerMana").empty().text(Player.mana+"/"+Player.maxMana);
+    $("#player_health").empty().text(Player.health+"/"+Player.maxHealth);
+    $("#player_mana").empty().text(Player.mana+"/"+Player.maxMana);
 }
 
 function loadLocation() {
@@ -93,14 +96,14 @@ function loadLocation() {
 }
 
 function loadPlayerItems() {
-    loadInventory(Player.Inventory);
-    loadEquipped(Player.Equipped);
+    loadInventory();
+    loadEquipped();
 }
 
 function loadPlayerMagic() {
-    var keys = Object.keys(Player.Spells);
+    var keys = Object.keys(Player.spells);
     for(var key in keys) {
-        var spell = $(makeSpellThumb(Player.Spells[keys[key]])).on("dblclick", function() {
+        var spell = $(makeSpellThumb(Player.spells[keys[key]])).on("dblclick", function() {
             castSpell(keys[key])
         });
 
@@ -108,26 +111,22 @@ function loadPlayerMagic() {
     }
 }
 
-function loadInventory(Inventory) {
-    Player.Inventory = Inventory;
-
+function loadInventory() {
     $(".invSlot").empty();
 
-    for(var slot in Inventory) {
-        if(Inventory[slot].name) {
-            $("#inv"+slot).append(makeItemThumb(Inventory[slot], slot));
+    for(var slot in Player.inventory) {
+        if(Player.inventory[slot]) {
+            $("#inv"+slot).append(makeItemThumb(Player.inventory[slot], slot));
         }
     }
 }
 
-function loadEquipped(Equipped) {
-    Player.Equipped = Equipped;
-
+function loadEquipped() {
     $(".equipSlot").empty();
 
-    for(var slot in Equipped) {
-        if(Equipped[slot].name && Equipped[slot].thumb) {
-            $("#player"+slot).empty().append(makeItemThumb(Equipped[slot], slot));
+    for(var slot in Player.equipped) {
+        if(Player.equipped[slot]) {
+            $("#player"+slot).empty().append(makeItemThumb(Player.equipped[slot], slot));
         }
     }
 }
@@ -138,7 +137,7 @@ function defaultDragAndDrop() {
     $(".dropSlot").droppable({
         accept: ".itemThumb",
         snap: true,
-        snapTolerance: 20
+        snapTolerance: 30
     }).on("drop", function(event, itemEl) {
 
     });
@@ -159,7 +158,7 @@ function makeDraggable(el) {
     el.draggable({
         snap: true,
         snapMode: "inner",
-        snapTolerance: 5,
+        snapTolerance: 30,
         revert: "invalid"
     });
 
@@ -174,13 +173,13 @@ function makeDroppable(el, accept, callback) {
     return el;
 }
 
-function makeItemThumb(Item, Slot) {
+function makeItemThumb(item, slot) {
     var el;
 
-    if(Item.attack || Item.defense) {
-        el = $("<img id='"+Item._id+"' class='equipThumb itemThumb' data-slot='"+Slot+"' src='"+Item.thumb+"'>");
+    if(item.attack || item.defense) {
+        el = $("<img id='"+item._id+"' class='equipThumb itemThumb' data-slot='"+slot+"' src='"+item.thumb+"'>");
     } else {
-        el = $("<img id='"+Item._id+"' class='useableThumb itemThumb' data-slot='"+Slot+"' src='"+Item.thumb+"'>");
+        el = $("<img id='"+item._id+"' class='usableThumb itemThumb' data-slot='"+slot+"' src='"+item.thumb+"'>");
     }
 
     return makeDraggable(el);

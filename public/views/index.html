@@ -27,16 +27,18 @@
         <div id="envPanel" class="col-lg-6 gameUIPanel frameBorder hide gameUI">
             <div id="environmentStats">
                 <div id="envTerrain" class="travelUI"></div>
-                <div id="monster" class="combatUI hide">
-                    <div id="monsterImage"></div>
-                    <table id="monsterTable" class="hide combatUI">
-                        <tr>
-                            <td id="monsterName"></td>
-                        </tr>
-                        <tr>
-                            <td id="monsterHealth"></td>
-                        </tr>
-                    </table>
+                <div id="monster" class="combatUI col-md-12 hide dataTableDiv">
+                    <div id="monsterImage" class="col-md-6"></div>
+                    <div id="monsterStats" class="col-md-6">
+                        <table id="monsterTable" class="table dataTable">
+                            <tr>
+                                <td id="monsterName"></td>
+                            </tr>
+                            <tr>
+                                <td id="monsterHealth"></td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div id="map" class="col-md-12 travelUI">
@@ -54,7 +56,6 @@
             </div>
             <div id="combatBtns" class="col-md-12 commandBtns combatUI hide">
                 <button id="physicalAttackBtn" class="btn btn-standard UIBtn">Attack</button>
-                <button id="attackSpellBtn" class="btn btn-standard UIBtn">Spell</button>
                 <button id="skillAttackBtn" class="btn btn-standard UIBtn">Outmaneuver</button>
                 <button id="mentalAttackBtn" class="btn btn-standard UIBtn">Outwit</button>
                 <button id="runBtn" class="btn btn-standard UIBtn">Run</button>
@@ -164,26 +165,26 @@
                     </table>
                     <table id="inventoryTable" class="table dataTable">
                         <tr>
-                            <td id="invSlot1" class="invSlot dropSlot"></td>
-                            <td id="invSlot2" class="invSlot dropSlot"></td>
-                            <td id="invSlot3" class="invSlot dropSlot"></td>
-                            <td id="invSlot4" class="invSlot dropSlot"></td>
+                            <td id="invSlot0" data-slot="Slot0" class="invSlot dropSlot"></td>
+                            <td id="invSlot1" data-slot="Slot1" class="invSlot dropSlot"></td>
+                            <td id="invSlot2" data-slot="Slot2" class="invSlot dropSlot"></td>
+                            <td id="invSlot3" data-slot="Slot3" class="invSlot dropSlot"></td>
                         </tr><tr>
-                            <td id="invSlot5" class="invSlot dropSlot"></td>
-                            <td id="invSlot6" class="invSlot dropSlot"></td>
-                            <td id="invSlot7" class="invSlot dropSlot"></td>
-                            <td id="invSlot8" class="invSlot dropSlot"></td>
+                            <td id="invSlot4" data-slot="Slot4" class="invSlot dropSlot"></td>
+                            <td id="invSlot5" data-slot="Slot5" class="invSlot dropSlot"></td>
+                            <td id="invSlot6" data-slot="Slot6" class="invSlot dropSlot"></td>
+                            <td id="invSlot7" data-slot="Slot7" class="invSlot dropSlot"></td>
                         </tr>
                         <tr>
-                            <td id="invSlot9" class="invSlot dropSlot"></td>
-                            <td id="invSlot10" class="invSlot dropSlot"></td>
-                            <td id="invSlot11" class="invSlot dropSlot"></td>
-                            <td id="invSlot12" class="invSlot dropSlot"></td>
+                            <td id="invSlot8" data-slot="Slot8" class="invSlot dropSlot"></td>
+                            <td id="invSlot9" data-slot="Slot9" class="invSlot dropSlot"></td>
+                            <td id="invSlot10" data-slot="Slot10" class="invSlot dropSlot"></td>
+                            <td id="invSlot11" data-slot="Slot11" class="invSlot dropSlot"></td>
                         </tr><tr>
-                            <td id="invSlot13" class="invSlot dropSlot"></td>
-                            <td id="invSlot14" class="invSlot dropSlot"></td>
-                            <td id="invSlot15" class="invSlot dropSlot"></td>
-                            <td id="invSlot16" class="invSlot dropSlot"></td>
+                            <td id="invSlot12" data-slot="Slot12" class="invSlot dropSlot"></td>
+                            <td id="invSlot13" data-slot="Slot13" class="invSlot dropSlot"></td>
+                            <td id="invSlot14" data-slot="Slot14" class="invSlot dropSlot"></td>
+                            <td id="invSlot15" data-slot="Slot15" class="invSlot dropSlot"></td>
                         </tr>
                     </table>
                 </div>
@@ -345,17 +346,34 @@
                 </div><!-- /.modal-content -->
             </div>
         </div>
-        <div id="itemModal" class="modal fade commandModal" tabindex="-1" role="dialog" data-itemId="">
+        <div id="itemModal" class="modal fade commandModal" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                        <h4 class="modal-title">Items</h4>
+                        <h4 id="itemModal_name" class="modal-title">Options</h4>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="text-align:center;">
+                        <table id="itemProperties" class="table dataTable">
+                            <tr>
+                                <td>Attack</td>
+                                <td id="item_attack"></td>
+                                <td>Defense</td>
+                                <td id="item_defense"></td>
+                            </tr>
+                            <tr>
+                                <td>Magic Attack</td>
+                                <td id="item_magicAttack"></td>
+                                <td>Magic Defense</td>
+                                <td id="item_magicDefense"></td>
+                            </tr>
+                        </table>
+                        <br>
+                        Requirements
+                        <table id="itemRequirements" class="table dataTable"></table>
                         <button id="itemConsume" class="btn btn-standard UIBtn">Consume</button>
                         <button id="itemThrow" class="btn btn-standard UIBtn">Throw</button>
-                        <button id="itemDiscard" class="btn btn-standard UIBtn">Discard</button>
+                        <button id="itemDrop" class="btn btn-standard UIBtn">Drop</button>
                     </div>
                 </div><!-- /.modal-content -->
             </div>

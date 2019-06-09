@@ -1,7 +1,8 @@
 var currentCoords = {lat: null, lng: null};
 var refreshLocation = true;
 var Env = {};
-var Item = {};
+var Item = null;
+var itemSlot = null;
 
 var combatBtns = "#combatBtns";
 
@@ -43,26 +44,33 @@ $(document).ready(function() {
     socket.on("Player.Monster.Encountered", encounterMonster);
 
     /** Inventory and Equipment **/
-    $(".itemThumb").on("click", function(e) {
-        itemOptions($(this).attr("id"));
+    //$(".itemThumb").on("click", function(e) {
+    //    alert("hi");
+    //    itemOptions($(this).attr("id"));
+    //});
+
+    $(".invSlot").on("dblclick", function(e) {
+        itemOptions($(this).data("slot"));
     });
 
-    $("#itemUse").on("click", function() {
-        console.log($(this));
-    });
+    $("#itemConsume").on("click", useItem);
+    $("#itemThrow").on("click", throwItem);
+    $("#itemDrop").on("click", dropItem);
 
-    $("#itemDiscard").on("click", function() {
-        discardItem(Item);
-    });
-
-    $(".usableThumb").dblclick(function(e) {
-        alert("Double Clicked");
-    });
+    //$(".usableThumb").dblclick(function(e) {
+    //    alert("Double Clicked");
+    //});
 
     defaultDragAndDrop();
 
-    socket.on("Player.Inventory.Updated", loadInventory);
-    socket.on("Player.Equipment.Updated", loadEquipped);
+    socket.on("Player.Inventory.Updated", function(inventory) {
+        Player.inventory = inventory;
+        loadInventory();
+    });
+    socket.on("Player.Equipment.Updated", function(equipped) {
+        Player.equipped = equipped;
+        loadEquipped();
+    });
 
     socket.on("Player.Item.Equipped", itemEquipped);
     socket.on("Player.Item.Interacted", interactedEnvironment);
@@ -113,19 +121,19 @@ function magicAttack() {
 }
 
 function skillAttack() {
-
+    socket.emit("Player.SkillAttack", Player._id);
 }
 
 function mentalAttack() {
-
+    socket.emit("Player.MentalAttack", Player._id);
 }
 
 function run() {
     socket.emit("Player.Location.Update", getCurrentCoords());
 }
 
-function pickUp() {
-    socket.emit("Player.Environment.PickUp", Player._id);
+function pickUp(Item) {
+    socket.emit("Player.Item.PickUp", {_id: Player._id, item: Item});
 }
 
 function equip(target, equipSlot) {
@@ -136,26 +144,46 @@ function revive() {
     socket.emit("Player.Revive", Player._id);
 }
 
-function revived() {
+function revived(player) {
+    loadPlayer(player);
     $("#ripModal").modal("hide");
-    loadPlayer();
 }
 
 /** Spells **/
 
 /** Items **/
 
-function itemOptions(itemId) {
-    Item = Player.Inventory[itemId];
-    itemModal();
+function itemOptions(slot) {
+    itemSlot = slot;
+    Item = Player.inventory[slot];
+    if(Item.name) {
+        $("#itemModal_name").empty().text(Item.name);
+        $("#itemRequirements").empty();
+
+        $("#itemModal").modal("show");
+        for(var e in Item) {
+            $("#item_"+e).empty().text(Item[e]);
+        }
+
+        for(var r in Item.requirements) {
+            $("#itemRequirements").append("<tr><td>"+r+"</td><td>"+Item.requirements[r]+"</td></tr>")
+        }
+    }
 }
 
-function useItem(Item, Target) {
-
+function useItem() {
+    socket.emit("Player.Item.Use", {_id: Player._id, slot: itemSlot});
+    $("#itemModal").modal("hide");
 }
 
-function dropItem(Item) {
+function throwItem() {
+    socket.emit("Player.Item.Throw", {_id: Player._id, slot: itemSlot});
+    $("#itemModal").modal("hide");
+}
 
+function dropItem() {
+    socket.emit("Player.Item.Drop", {_id: Player._id, slot: itemSlot});
+    $("#itemModal").modal("hide");
 }
 
 function searchEnvironment() {
@@ -200,8 +228,8 @@ function updateHealth(update) {
     console.log(update);
     if(update > 0) {
         writeToConsole("You take "+(Player.health - update)+" damage!");
-        Player.Health = update;
-        $("#playerHealth").empty().text(Player.Health+"/"+Player.MaxHealth);
+        Player.health = update;
+        $("#player_health").empty().text(Player.health+"/"+Player.maxHealth);
     } else {
         knockedOut();
     }
@@ -210,7 +238,7 @@ function updateHealth(update) {
 function healHealth(update) {
     writeToConsole("You recover "+(update - Player.health)+" damage!");
     Player.health = update;
-    $("#playerHealth").empty().text(Player.health+"/"+Player.maxHealth);
+    $("#player_health").empty().text(Player.health+"/"+Player.maxHealth);
 }
 
 function updateEnvHealth(update) {
@@ -227,6 +255,11 @@ function defeatEnemy() {
     playAudio("victoriousChampion");
     writeToConsole("You defeated "+Env.name+" and earned "+Env.experience+" experience!");
     $("#monsterHealth").empty().text("Defeated");
+
+    if(Env.Item) {
+        pickUp(Env.Item);
+    }
+
     refreshLocation = true;
     updateLocation();
     travelUI();
@@ -239,7 +272,6 @@ function knockedOut() {
 /** Experience and Level **/
 
 function updateExperience(exp) {
-    console.log(exp);
     Player.experience = exp;
-    $("#playerExperience").empty().text(Player.experience);
+    $("#player_experience").empty().text(Player.experience);
 }
