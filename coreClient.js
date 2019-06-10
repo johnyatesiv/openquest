@@ -7,4 +7,4 @@ io.on('connection', function(client) {
     coreClient = client
 })
 
-export { coreClient }
+export default coreClient

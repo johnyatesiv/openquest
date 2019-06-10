@@ -1,22 +1,29 @@
-import coreClient from './client'
-//const Addons = require('Addons')
-import Events from './lib/Events'
-//const Characters = require('Characters')
+import coreClient from './coreClient'
+import * as Modules from './lib/index'
 
-const modules = {
+class Core {
+    constructor (coreClient, Modules) {
+        this.coreClient = coreClient
+        this.Modules = Modules
+        this.Registry = {}
+        this.EventMap = {}
 
+        Object.keys(this.Modules).forEach(key => {
+            Object.keys(this.Modules[key].events).forEach(event => {
+                this.EventMap[event.name] = event.processor
+            })
+        })
+
+        Object.keys(this.EventMap).forEach(key => {
+            this.coreClient.on(key, function(update) {
+                this.EventMap[key].process(update)
+            })
+        })
+    }
+
+    removeFromRegsitry (id) {
+        delete this.Registry[id]
+    }
 }
 
-const EventMap = {}
-
-Object.keys(modules).forEach(key => {
-    Object.keys(modules[key].events).forEach(event => {
-        EventMap[event.name] = event.processor
-    })
-})
-
-Object.keys(EventMap).forEach(key => {
-    client.on(key, function(update) {
-        EventMap[key].process(update)
-    })
-})
+const Instance = new Core(coreClient, Modules)
